@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F7F9FC">
+
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="28dp">
+
+            <!-- App Icon -->
+            <TextView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:background="#DDF5EE"
+                android:gravity="center"
+                android:text="P"
+                android:textColor="#087F68"
+                android:textSize="40sp"
+                android:textStyle="bold" />
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Set up your profile"
+                android:textColor="#172B3A"
+                android:textSize="26sp"
+                android:textStyle="bold" />
+
+            <!-- Description -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:lineSpacingExtra="4dp"
+                android:text="Choose the information other users will see when they connect with you."
+                android:textColor="#607080"
+                android:textSize="15sp" />
+
+            <!-- Profile Picture Placeholder -->
+            <TextView
+                android:id="@+id/tvProfilePicture"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_marginTop="28dp"
+                android:background="#DDF5EE"
+                android:gravity="center"
+                android:text="＋"
+                android:textColor="#087F68"
+                android:textSize="40sp"
+                android:textStyle="normal" />
+
+            <!-- Name -->
+            <EditText
+                android:id="@+id/etName"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="28dp"
+                android:backgroundTint="#087F68"
+                android:hint="Your name"
+                android:inputType="textCapWords"
+                android:maxLines="1"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textColor="#172B3A"
+                android:textColorHint="#8996A3"
+                android:textSize="16sp" />
+
+            <!-- Username -->
+            <EditText
+                android:id="@+id/etUsername"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="16dp"
+                android:backgroundTint="#087F68"
+                android:hint="Username"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:textColor="#172B3A"
+                android:textColorHint="#8996A3"
+                android:textSize="16sp" />
+
+            <!-- Username Hint -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Your username will be used by others to find you."
+                android:textColor="#8996A3"
+                android:textSize="12sp" />
+
+            <!-- Continue -->
+            <Button
+                android:id="@+id/btnContinueProfile"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="#087F68"
+                android:text="Continue"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp" />
+
+            <!-- Privacy Notice -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="center"
+                android:lineSpacingExtra="4dp"
+                android:text="Your profile information will be stored securely on your device."
+                android:textColor="#718096"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
