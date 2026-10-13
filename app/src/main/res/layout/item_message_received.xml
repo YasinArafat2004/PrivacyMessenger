@@ -1,24 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:gravity="start"
-    android:paddingStart="8dp"
-    android:paddingEnd="48dp"
+    android:gravity="end"
+    android:paddingStart="48dp"
+    android:paddingEnd="8dp"
     android:paddingTop="4dp"
     android:paddingBottom="4dp">
 
-    <TextView
-        android:id="@+id/tvMessage"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="300dp"
-        android:padding="12dp"
-        android:text="Hello"
-        android:textColor="#222222"
-        android:textSize="16sp"
-        android:background="#E8E8E8" />
+        android:orientation="vertical"
+        android:background="#DCF8C6"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="280dp"
+            android:textColor="#222222"
+            android:textSize="16sp"
+            android:text="Hello" />
+
+        <TextView
+            android:id="@+id/tvTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="4dp"
+            android:textColor="#666666"
+            android:textSize="11sp"
+            android:text="10:30 AM" />
+
+    </LinearLayout>
 
 </LinearLayout>

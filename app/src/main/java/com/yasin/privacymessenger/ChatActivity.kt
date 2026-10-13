@@ -17,6 +17,8 @@ import com.yasin.privacymessenger.data.database.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.app.AlertDialog
+import android.view.Gravity
 
 class ChatActivity : AppCompatActivity() {
 
@@ -24,7 +26,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var rvMessages: RecyclerView
     private lateinit var etMessage: EditText
     private lateinit var btnSend: Button
-
+    private lateinit var btnClearChat: Button
     private lateinit var chatUsername: String
     private lateinit var currentUsername: String
 
@@ -56,6 +58,11 @@ class ChatActivity : AppCompatActivity() {
 
             insets
         }
+        btnClearChat = findViewById(R.id.btnClearChat)
+
+        btnClearChat.setOnClickListener {
+            showClearChatConfirmation()
+        }
 
         tvChatTitle = findViewById(R.id.tvChatTitle)
         rvMessages = findViewById(R.id.rvMessages)
@@ -81,6 +88,47 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    private fun showClearChatConfirmation() {
+        AlertDialog.Builder(this)
+            .setTitle("Clear chat?")
+            .setMessage(
+                "This will permanently delete all messages in this conversation from this device."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Clear") { _, _ ->
+                clearCurrentChat()
+            }
+            .show()
+    }
+
+    private fun clearCurrentChat() {
+        btnClearChat.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    database.messageDao().clearChat(chatUsername)
+                }
+
+                loadMessages()
+
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Chat cleared on this device.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Could not clear chat.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                btnClearChat.isEnabled = true
+            }
+        }
+    }
+
     private fun loadCurrentUsername() {
 
         lifecycleScope.launch {
@@ -103,8 +151,31 @@ class ChatActivity : AppCompatActivity() {
 
             currentUsername = account.username
 
-            messageAdapter =
-                MessageAdapter(currentUsername)
+            messageAdapter = MessageAdapter(currentUsername) { message ->
+                lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            database.messageDao().deleteMessage(
+                                messageId = message.id,
+                                chatUsername = chatUsername
+                            )
+                        }
+
+                        loadMessages()
+                        Toast.makeText(
+                            this@ChatActivity,
+                            "Message deleted from this device.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            this@ChatActivity,
+                            "Could not delete message.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
 
             rvMessages.adapter = messageAdapter
 
