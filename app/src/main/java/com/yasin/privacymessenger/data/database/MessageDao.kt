@@ -36,4 +36,12 @@ interface MessageDao {
     suspend fun clearChat(
         chatUsername: String
     )
+    @Query("""
+    SELECT * FROM messages
+    WHERE serverMessageId = :serverMessageId
+    LIMIT 1
+""")
+    suspend fun getMessageByServerId(
+        serverMessageId: Int
+    ): Message?
 }

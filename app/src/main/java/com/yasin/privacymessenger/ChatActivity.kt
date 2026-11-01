@@ -19,6 +19,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.app.AlertDialog
 import android.view.Gravity
+import com.yasin.privacymessenger.network.MessageRequest
+import com.yasin.privacymessenger.network.RetrofitClient
+import android.util.Log
+import java.time.Instant
 
 class ChatActivity : AppCompatActivity() {
 
@@ -179,7 +183,14 @@ class ChatActivity : AppCompatActivity() {
 
             rvMessages.adapter = messageAdapter
 
+// Show locally stored messages immediately.
             loadMessages()
+
+// Retrieve messages from the server, then refresh the chat.
+            lifecycleScope.launch {
+                syncMessagesFromServer()
+                loadMessages()
+            }
         }
     }
 
@@ -202,70 +213,168 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+
     private fun sendMessage() {
+        val content = etMessage.text.toString().trim()
 
-        val content =
-            etMessage.text.toString().trim()
-
-        if (content.isEmpty()) {
-            return
-        }
+        if (content.isEmpty()) return
 
         if (chatUsername.isBlank()) {
-
             Toast.makeText(
                 this,
                 "Chat recipient is missing.",
                 Toast.LENGTH_SHORT
             ).show()
-
             return
         }
 
         if (!::currentUsername.isInitialized) {
-
             Toast.makeText(
                 this,
                 "Please wait for your account to load.",
                 Toast.LENGTH_SHORT
             ).show()
-
             return
         }
 
         btnSend.isEnabled = false
 
         lifecycleScope.launch {
-
             try {
+                var serverSaved = false
+                var serverMessageId: Int? = null
 
-                val message = Message(
+                // Step 1: Send the message to the backend.
+                try {
+                    val response = withContext(Dispatchers.IO) {
+                        RetrofitClient.api.sendMessage(
+                            MessageRequest(
+                                senderUsername = currentUsername,
+                                receiverUsername = chatUsername,
+                                content = content
+                            )
+                        )
+                    }
+
+                    val body = response.body()
+
+                    serverSaved =
+                        response.isSuccessful && body?.success == true
+
+                    if (serverSaved) {
+                        serverMessageId = body?.data?.id
+                    }
+
+                } catch (e: Exception) {
+                    Log.e(
+                        "PrivacyMessengerAPI",
+                        "Message upload failed: ${e.message}",
+                        e
+                    )
+                }
+
+                // Step 2: Save the message locally.
+                val localMessage = Message(
                     chatUsername = chatUsername,
                     senderUsername = currentUsername,
-                    content = content
+                    content = content,
+                    serverMessageId = serverMessageId
                 )
 
                 withContext(Dispatchers.IO) {
-                    database.messageDao()
-                        .insertMessage(message)
+                    database.messageDao().insertMessage(localMessage)
                 }
 
+                // Step 3: Refresh the conversation.
                 etMessage.text.clear()
-
                 loadMessages()
 
-            } catch (e: Exception) {
+                // Step 4: Show the result.
+                val status = if (serverSaved) {
+                    "Message saved locally and on the server."
+                } else {
+                    "Message saved on this device, but server sync failed."
+                }
 
                 Toast.makeText(
                     this@ChatActivity,
-                    "Could not save message.",
+                    status,
+                    Toast.LENGTH_LONG
+                ).show()
+
+            } catch (e: Exception) {
+                Log.e(
+                    "PrivacyMessengerAPI",
+                    "Could not save local message: ${e.message}",
+                    e
+                )
+
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Could not save message on this device.",
                     Toast.LENGTH_SHORT
                 ).show()
 
             } finally {
-
                 btnSend.isEnabled = true
             }
+        }
+    }
+
+    private suspend fun syncMessagesFromServer() {
+        try {
+            val response = withContext(Dispatchers.IO) {
+                RetrofitClient.api.getMessages(currentUsername)
+            }
+
+            if (!response.isSuccessful) {
+                Log.e(
+                    "PrivacyMessengerAPI",
+                    "Failed to retrieve messages. HTTP ${response.code()}"
+                )
+                return
+            }
+
+            val serverMessages = response.body()?.data ?: return
+
+            withContext(Dispatchers.IO) {
+                for (serverMessage in serverMessages) {
+
+                    // Only import messages belonging to this conversation.
+                    val belongsToChat =
+                        (serverMessage.senderUsername == currentUsername &&
+                                serverMessage.receiverUsername == chatUsername) ||
+                                (serverMessage.senderUsername == chatUsername &&
+                                        serverMessage.receiverUsername == currentUsername)
+
+                    if (!belongsToChat) continue
+
+                    // Prevent importing the same server message twice.
+                    val existingMessage = database.messageDao()
+                        .getMessageByServerId(serverMessage.id)
+
+                    if (existingMessage != null) continue
+
+                    val localMessage = Message(
+                        chatUsername = chatUsername,
+                        senderUsername = serverMessage.senderUsername,
+                        content = serverMessage.content,
+                        timestamp = Instant.parse(
+                            serverMessage.timestamp
+                        ).toEpochMilli(),
+                        serverMessageId = serverMessage.id
+                    )
+
+                    database.messageDao().insertMessage(localMessage)
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e(
+                "PrivacyMessengerAPI",
+                "Message synchronization failed: ${e.message}",
+                e
+            )
         }
     }
 }

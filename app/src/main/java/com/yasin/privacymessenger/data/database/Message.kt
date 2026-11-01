@@ -15,5 +15,7 @@ data class Message(
 
     val content: String,
 
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+
+    val serverMessageId: Int? = null
 )
