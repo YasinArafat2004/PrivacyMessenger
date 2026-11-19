@@ -7,8 +7,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    // Replace this with your Kali PC's Wi-Fi/LAN IP address.
-    private const val BASE_URL = "http://192.168.0.101:3000/"
+    // ⚠️ Trailing slash is required. Replace with YOUR PC's LAN IP.
+    private const val BASE_URL = "http://192.168.0.104:3000/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
@@ -18,12 +18,14 @@ object RetrofitClient {
         .addInterceptor(loggingInterceptor)
         .build()
 
-    val api: MessageApi by lazy {
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(MessageApi::class.java)
     }
+
+    val api: MessageApi by lazy { retrofit.create(MessageApi::class.java) }
+    val userApi: UserApi by lazy { retrofit.create(UserApi::class.java) }
 }

@@ -1,163 +1,152 @@
 package com.yasin.privacymessenger
 
 import android.app.AlertDialog
-import android.view.Gravity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.yasin.privacymessenger.data.database.Message
 import java.text.DateFormat
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
-import java.util.Locale
+
+/** One row of the conversation: either a day separator or a message bubble. */
+sealed class ChatItem {
+    data class DateHeader(val dayStartMillis: Long, val label: String) : ChatItem()
+    data class Bubble(val message: Message) : ChatItem()
+}
 
 class MessageAdapter(
     private val currentUsername: String,
-    private val onDeleteMessage: (Message) -> Unit
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    private val onDeleteMessage: (Message) -> Unit,
+    private val onRetryMessage: (Message) -> Unit
+) : ListAdapter<ChatItem, RecyclerView.ViewHolder>(DIFF) {
 
-    private var messages = listOf<Message>()
+    private val timeFormat: DateFormat = DateFormat.getTimeInstance(DateFormat.SHORT)
 
     companion object {
         private const val TYPE_SENT = 1
         private const val TYPE_RECEIVED = 2
         private const val TYPE_DATE = 3
-    }
 
-    fun setMessages(newMessages: List<Message>) {
-        messages = newMessages
-        notifyDataSetChanged()
-    }
+        private const val COLOR_NORMAL = 0xFF667781.toInt()
+        private const val COLOR_FAILED = 0xFFD32F2F.toInt()
 
-    private fun shouldShowDate(position: Int): Boolean {
-        if (position == 0) return true
+        private val DIFF = object : DiffUtil.ItemCallback<ChatItem>() {
+            override fun areItemsTheSame(oldItem: ChatItem, newItem: ChatItem): Boolean {
+                return when {
+                    oldItem is ChatItem.DateHeader && newItem is ChatItem.DateHeader ->
+                        oldItem.dayStartMillis == newItem.dayStartMillis
 
-        val previousDate = Calendar.getInstance().apply {
-            timeInMillis = messages[position - 1].timestamp
-        }
-        val currentDate = Calendar.getInstance().apply {
-            timeInMillis = messages[position].timestamp
-        }
+                    oldItem is ChatItem.Bubble && newItem is ChatItem.Bubble ->
+                        oldItem.message.id == newItem.message.id
 
-        return previousDate.get(Calendar.YEAR) !=
-                currentDate.get(Calendar.YEAR) ||
-                previousDate.get(Calendar.DAY_OF_YEAR) !=
-                currentDate.get(Calendar.DAY_OF_YEAR)
-    }
+                    else -> false
+                }
+            }
 
-    private fun dateLabel(timestamp: Long): String {
-        val messageDate = Calendar.getInstance().apply {
-            timeInMillis = timestamp
-        }
-        val today = Calendar.getInstance()
-        val yesterday = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_YEAR, -1)
-        }
-
-        return when {
-            messageDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    messageDate.get(Calendar.DAY_OF_YEAR) ==
-                    today.get(Calendar.DAY_OF_YEAR) -> "Today"
-
-            messageDate.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
-                    messageDate.get(Calendar.DAY_OF_YEAR) ==
-                    yesterday.get(Calendar.DAY_OF_YEAR) -> "Yesterday"
-
-            else -> SimpleDateFormat(
-                "MMMM d, yyyy",
-                Locale.getDefault()
-            ).format(Date(timestamp))
+            override fun areContentsTheSame(oldItem: ChatItem, newItem: ChatItem): Boolean {
+                return oldItem == newItem
+            }
         }
     }
 
     override fun getItemViewType(position: Int): Int {
-        if (shouldShowDate(position)) return TYPE_DATE
-
-        return if (messages[position].senderUsername == currentUsername) {
-            TYPE_SENT
-        } else {
-            TYPE_RECEIVED
+        return when (val item = getItem(position)) {
+            is ChatItem.DateHeader -> TYPE_DATE
+            is ChatItem.Bubble ->
+                if (item.message.senderUsername == currentUsername) TYPE_SENT else TYPE_RECEIVED
         }
     }
 
-    override fun getItemCount(): Int = messages.size
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
 
-    override fun onCreateViewHolder(
-        parent: ViewGroup,
-        viewType: Int
-    ): RecyclerView.ViewHolder {
-        if (viewType == TYPE_DATE) {
-            val view = TextView(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                gravity = Gravity.CENTER
-                textSize = 12f
-                setTextColor(android.graphics.Color.DKGRAY)
-                setPadding(12, 12, 12, 12)
-            }
-            return DateViewHolder(view)
+        return when (viewType) {
+            TYPE_DATE -> DateViewHolder(inflater.inflate(R.layout.item_date_header, parent, false))
+            TYPE_SENT -> MessageViewHolder(inflater.inflate(R.layout.item_message_sent, parent, false))
+            else -> MessageViewHolder(inflater.inflate(R.layout.item_message_received, parent, false))
         }
-
-        val layout = if (viewType == TYPE_SENT) {
-            R.layout.item_message_sent
-        } else {
-            R.layout.item_message_received
-        }
-
-        val view = LayoutInflater.from(parent.context)
-            .inflate(layout, parent, false)
-
-        return MessageViewHolder(view)
     }
 
-    override fun onBindViewHolder(
-        holder: RecyclerView.ViewHolder,
-        position: Int
-    ) {
-        val message = messages[position]
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val item = getItem(position)) {
+            is ChatItem.DateHeader -> (holder as DateViewHolder).tvDate.text = item.label
+            is ChatItem.Bubble -> bindMessage(holder as MessageViewHolder, item.message)
+        }
+    }
 
-        when (holder) {
-            is DateViewHolder -> {
-                holder.tvDate.text = dateLabel(message.timestamp)
+    private fun bindMessage(holder: MessageViewHolder, message: Message) {
+        holder.tvMessage.text = message.content
+
+        val time = timeFormat.format(Date(message.timestamp))
+        val isMine = message.senderUsername == currentUsername
+
+        holder.tvTimestamp.setTextColor(COLOR_NORMAL)
+
+        holder.tvTimestamp.text = when {
+            !isMine -> time
+            message.status == Message.STATUS_PENDING -> "$time  \uD83D\uDD53"
+            message.status == Message.STATUS_FAILED -> {
+                holder.tvTimestamp.setTextColor(COLOR_FAILED)
+                "Not sent \u2022 tap to retry"
             }
+            else -> "$time  \u2713"
+        }
 
-            is MessageViewHolder -> {
-                holder.tvMessage.text = message.content
-                holder.tvTimestamp.text =
-                    DateFormat.getTimeInstance(DateFormat.SHORT)
-                        .format(Date(message.timestamp))
+        // Tap a failed message to retry it (like WhatsApp).
+        if (isMine && message.status == Message.STATUS_FAILED) {
+            holder.itemView.setOnClickListener { onRetryMessage(message) }
+        } else {
+            holder.itemView.setOnClickListener(null)
+            holder.itemView.isClickable = false
+        }
 
-                holder.itemView.setOnLongClickListener {
-                    AlertDialog.Builder(holder.itemView.context)
-                        .setTitle("Delete message?")
-                        .setMessage("Do you want to delete this message from this device?")
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Delete") { _, _ ->
-                            onDeleteMessage(message)
-                        }
-                        .show()
-                    true
+        holder.itemView.setOnLongClickListener {
+            val context = holder.itemView.context
+
+            AlertDialog.Builder(context)
+                .setItems(arrayOf("Copy", "Delete for me")) { _, which ->
+                    if (which == 0) {
+                        copyToClipboard(context, message.content)
+                    } else {
+                        confirmDelete(context, message)
+                    }
                 }
-            }
+                .show()
+
+            true
         }
     }
 
-    class MessageViewHolder(itemView: View) :
-        RecyclerView.ViewHolder(itemView) {
-        val tvMessage: TextView =
-            itemView.findViewById(R.id.tvMessage)
-        val tvTimestamp: TextView =
-            itemView.findViewById(R.id.tvTimestamp)
+    private fun copyToClipboard(context: Context, text: String) {
+        val clipboard =
+            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("message", text))
+        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
     }
 
-    class DateViewHolder(itemView: View) :
-        RecyclerView.ViewHolder(itemView) {
-        val tvDate: TextView = itemView as TextView
+    private fun confirmDelete(context: Context, message: Message) {
+        AlertDialog.Builder(context)
+            .setTitle("Delete message?")
+            .setMessage("This message will be deleted from this device only.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete") { _, _ -> onDeleteMessage(message) }
+            .show()
+    }
+
+    class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvMessage: TextView = itemView.findViewById(R.id.tvMessage)
+        val tvTimestamp: TextView = itemView.findViewById(R.id.tvTimestamp)
+    }
+
+    class DateViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val tvDate: TextView = itemView.findViewById(R.id.tvDate)
     }
 }
-

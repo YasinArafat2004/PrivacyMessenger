@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#14171A"> <!-- Twitter Dark -->
+
+    <TextView
+        android:id="@+id/tvCallerName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="Caller Name"
+        android:textColor="#FFFFFF"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tvCallStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Ringing..."
+        android:textColor="#657786"
+        android:textSize="18sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvCallerName" />
+
+    <!-- Accept/Decline Buttons (Incoming Call) -->
+    <LinearLayout
+        android:id="@+id/layoutIncoming"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="80dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <Button
+            android:id="@+id/btnDecline"
+            android:layout_width="100dp"
+            android:layout_height="80dp"
+            android:layout_marginEnd="40dp"
+            android:backgroundTint="#E0245E"
+            android:text="Decline"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btnAccept"
+            android:layout_width="100dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="40dp"
+            android:backgroundTint="#17BF63"
+            android:text="Accept"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- End Call Button (Active Call) -->
+    <Button
+        android:id="@+id/btnEndCall"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginBottom="80dp"
+        android:backgroundTint="#E0245E"
+        android:text="End"
+        android:textColor="#FFFFFF"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

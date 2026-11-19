@@ -33,4 +33,6 @@ interface ContactDao {
     suspend fun deleteContact(
         username: String
     )
+    @Query("SELECT * FROM contacts")
+    fun getAllContactsFlow(): kotlinx.coroutines.flow.Flow<List<Contact>>
 }

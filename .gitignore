@@ -1,4 +1,4 @@
-*.iml
+:*.iml
 .gradle
 /local.properties
 /.idea/caches
@@ -13,3 +13,28 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Node.js backend
+backend/node_modules/
+backend/.env
+backend/.env.*
+backend/privacymessenger.db
+backend/privacymessenger.db-*
+backend/data/
+backend/1
+
+# Archives
+app.zip
+
+# Temporary editor files
+*.swp
+*.swo
+*.swn
+*~
+
+# All ZIP archives
+*.zip
+
+# Environment files
+.env
+.env.*
+!.env.example

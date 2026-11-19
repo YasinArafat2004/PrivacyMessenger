@@ -1,176 +1,192 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<androidx.constraintlayout.widget.ConstraintLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F7F9FC">
+    android:background="#F5F8FA">
 
-    <!-- Top App Bar -->
-    <LinearLayout
-        android:id="@+id/topBar"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:background="#FFFFFF"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+    <!-- Main Content Container -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-        <TextView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="#DDF5EE"
-            android:gravity="center"
-            android:text="P"
-            android:textColor="#087F68"
-            android:textSize="25sp"
-            android:textStyle="bold" />
-
+        <!-- Top App Bar (WhatsApp Style, Twitter Blue) -->
         <LinearLayout
+            android:id="@+id/topBar"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="14dp"
-            android:orientation="vertical">
+            android:layout_height="64dp"
+            android:background="#1DA1F2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
             <TextView
                 android:id="@+id/tvWelcome"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Welcome"
-                android:textColor="#172B3A"
-                android:textSize="19sp"
+                android:layout_weight="1"
+                android:text="Chats"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
                 android:textStyle="bold" />
+
+            <!-- Search Icon (Placeholder) -->
+            <TextView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="🔍"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Menu Icon (Placeholder for Logout) -->
+            <TextView
+                android:id="@+id/tvMenu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="⋮"
+                android:textColor="#FFFFFF"
+                android:textSize="28sp"
+                android:clickable="true"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+        <!-- Chat List (Currently hidden, will show when you have chats) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvChats"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/topBar"
+            app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Empty State (WhatsApp Style, Twitter Colors) -->
+        <LinearLayout
+            android:id="@+id/emptyState"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            app:layout_constraintTop_toBottomOf="@id/topBar"
+            app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:background="#E1E8ED"
+                android:gravity="center"
+                android:text="💬"
+                android:textSize="46sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Your conversations. Your control."
-                android:textColor="#718096"
+                android:layout_marginTop="24dp"
+                android:text="No chats yet"
+                android:textColor="#14171A"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:lineSpacingExtra="4dp"
+                android:text="Tap the message button below to find a friend and start chatting."
+                android:textColor="#657786"
+                android:textSize="15sp" />
+
+            <!-- Friend Requests Button styled like Twitter action -->
+            <Button
+                android:id="@+id/btnFriendRequests"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="#1DA1F2"
+                android:text="View Friend Requests"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
+        <!-- Bottom Navigation -->
+        <LinearLayout
+            android:id="@+id/bottomNavigation"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:background="#FFFFFF"
+            android:elevation="8dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:weightSum="3"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/navChats"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="💬\nChats"
+                android:textColor="#1DA1F2"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/navContacts"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="👥\nContacts"
+                android:textColor="#657786"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/navSettings"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="⚙\nSettings"
+                android:textColor="#657786"
                 android:textSize="12sp" />
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvProfile"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="#E9EEF3"
-            android:gravity="center"
-            android:text="👤"
-            android:textSize="20sp" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    </LinearLayout>
-
-    <!-- Empty Chat Area -->
-    <LinearLayout
-        android:id="@+id/emptyState"
-        android:layout_width="0dp"
+    <!-- Floating Action Button (WhatsApp Style for New Chat) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabFindPeople"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="28dp"
-        app:layout_constraintTop_toBottomOf="@id/topBar"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="80dp"
+        android:src="@android:drawable/ic_menu_send"
+        app:backgroundTint="#1DA1F2"
+        app:tint="#FFFFFF"
+        app:elevation="6dp" />
 
-        <TextView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:background="#DDF5EE"
-            android:gravity="center"
-            android:text="💬"
-            android:textSize="36sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="No conversations yet"
-            android:textColor="#172B3A"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:lineSpacingExtra="4dp"
-            android:text="Find someone by their username and start a private conversation."
-            android:textColor="#718096"
-            android:textSize="14sp" />
-
-        <Button
-            android:id="@+id/btnFindPeople"
-            android:layout_width="wrap_content"
-            android:layout_height="52dp"
-            android:layout_marginTop="24dp"
-            android:backgroundTint="#087F68"
-            android:text="Find People"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp" />
-        <Button
-            android:id="@+id/btnFriendRequests"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Friend Requests" />
-
-    </LinearLayout>
-
-    <!-- Bottom Navigation -->
-    <LinearLayout
-        android:id="@+id/bottomNavigation"
-        android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:background="#FFFFFF"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:weightSum="3"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <TextView
-            android:id="@+id/navChats"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="💬\nChats"
-            android:textColor="#087F68"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/navContacts"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="👥\nContacts"
-            android:textColor="#718096"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/navSettings"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="⚙\nSettings"
-            android:textColor="#718096"
-            android:textSize="12sp" />
-
-    </LinearLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

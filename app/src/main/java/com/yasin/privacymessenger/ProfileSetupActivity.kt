@@ -15,6 +15,8 @@ import com.yasin.privacymessenger.data.database.UserAccount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.yasin.privacymessenger.network.RegisterRequest
+import com.yasin.privacymessenger.network.RetrofitClient
 
 class ProfileSetupActivity : AppCompatActivity() {
 
@@ -64,30 +66,11 @@ class ProfileSetupActivity : AppCompatActivity() {
         val name = etName.text.toString().trim()
         val username = etUsername.text.toString().trim()
 
-        if (name.isEmpty()) {
-            etName.error = "Enter your name"
-            etName.requestFocus()
-            return
-        }
-
-        if (username.isEmpty()) {
-            etUsername.error = "Choose a username"
-            etUsername.requestFocus()
-            return
-        }
-
-        if (username.length < 4) {
-            etUsername.error =
-                "Username must be at least 4 characters"
-            etUsername.requestFocus()
-            return
-        }
-
+        if (name.isEmpty()) { etName.error = "Enter your name"; etName.requestFocus(); return }
+        if (username.isEmpty()) { etUsername.error = "Choose a username"; etUsername.requestFocus(); return }
+        if (username.length < 4) { etUsername.error = "Username must be at least 4 characters"; etUsername.requestFocus(); return }
         if (!username.matches(Regex("^[a-zA-Z0-9_]+$"))) {
-            etUsername.error =
-                "Use only letters, numbers and underscore"
-            etUsername.requestFocus()
-            return
+            etUsername.error = "Use only letters, numbers and underscore"; etUsername.requestFocus(); return
         }
 
         val account = UserAccount(
@@ -99,47 +82,39 @@ class ProfileSetupActivity : AppCompatActivity() {
 
         btnContinue.isEnabled = false
 
-        lifecycleScope.launch(Dispatchers.IO) {
-
+        lifecycleScope.launch {
             try {
-
-                val database =
-                    AppDatabase.getDatabase(
-                        this@ProfileSetupActivity
-                    )
-
-                database.userAccountDao()
-                    .insertAccount(account)
-
-                withContext(Dispatchers.Main) {
-
-                    Toast.makeText(
-                        this@ProfileSetupActivity,
-                        "Account saved securely on this device!",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    val intent = Intent(
-                        this@ProfileSetupActivity,
-                        HomeActivity::class.java
-                    )
-
-                    startActivity(intent)
-                    finish()
+                // 1. Tell the server
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.userApi.register(RegisterRequest(username, name))
                 }
+                if (!response.isSuccessful || response.body()?.success != true) {
+                    throw Exception("Server refused (code ${response.code()})")
+                }
+
+                // 2. Save locally
+                val database = AppDatabase.getDatabase(this@ProfileSetupActivity)
+                withContext(Dispatchers.IO) {
+                    database.userAccountDao().insertAccount(account)
+                }
+
+                // 3. Go home
+                Toast.makeText(
+                    this@ProfileSetupActivity,
+                    "Account created!",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                startActivity(Intent(this@ProfileSetupActivity, HomeActivity::class.java))
+                finish()
 
             } catch (e: Exception) {
-
-                withContext(Dispatchers.Main) {
-
-                    btnContinue.isEnabled = true
-
-                    Toast.makeText(
-                        this@ProfileSetupActivity,
-                        "Error: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                btnContinue.isEnabled = true
+                Toast.makeText(
+                    this@ProfileSetupActivity,
+                    "Could not create account: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

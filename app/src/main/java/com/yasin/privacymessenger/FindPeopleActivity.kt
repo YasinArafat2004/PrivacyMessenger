@@ -17,6 +17,8 @@ import com.yasin.privacymessenger.data.database.FriendRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.yasin.privacymessenger.network.FriendRequestSend
+import com.yasin.privacymessenger.network.RetrofitClient
 
 class FindPeopleActivity : AppCompatActivity() {
 
@@ -91,162 +93,107 @@ class FindPeopleActivity : AppCompatActivity() {
 
     private fun searchPerson() {
 
-        val username =
-            etSearchUsername.text.toString()
-                .trim()
-                .removePrefix("@")
+        val username = etSearchUsername.text.toString().trim().removePrefix("@")
 
         if (username.isEmpty()) {
-            etSearchUsername.error =
-                "Enter a username"
-
+            etSearchUsername.error = "Enter a username"
             etSearchUsername.requestFocus()
             return
         }
 
-        /*
-         * Development-only users.
-         *
-         * Later this search will use our backend.
-         */
+        btnSearch.isEnabled = false
+        tvSearchMessage.text = "Searching..."
+        resultContainer.visibility = View.GONE
+        currentResultUsername = ""
 
-        when (username.lowercase()) {
+        lifecycleScope.launch {
+            try {
+                val account = withContext(Dispatchers.IO) {
+                    AppDatabase.getDatabase(this@FindPeopleActivity)
+                        .userAccountDao()
+                        .getAccount()
+                }
 
-            "rahim123" -> {
+                if (account != null && account.username.equals(username, ignoreCase = true)) {
+                    tvSearchMessage.text = "You cannot add yourself"
+                    return@launch
+                }
 
-                currentResultUsername = "rahim123"
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.userApi.search(username)
+                }
 
-                tvResultName.text = "Rahim"
-                tvResultUsername.text = "@rahim123"
+                if (!response.isSuccessful) {
+                    tvSearchMessage.text = "Server error (${response.code()})"
+                    return@launch
+                }
 
-                resultContainer.visibility =
-                    View.VISIBLE
+                val user = response.body()?.data
 
+                if (user == null) {
+                    tvSearchMessage.text = "No user found"
+                    return@launch
+                }
+
+                currentResultUsername = user.username
+                tvResultName.text = user.name
+                tvResultUsername.text = "@${user.username}"
+                resultContainer.visibility = View.VISIBLE
                 tvSearchMessage.text = ""
-            }
+                btnAddFriend.isEnabled = true
+                btnAddFriend.text = "Add Friend"
 
-            "karim123" -> {
-
-                currentResultUsername = "karim123"
-
-                tvResultName.text = "Karim"
-                tvResultUsername.text = "@karim123"
-
-                resultContainer.visibility =
-                    View.VISIBLE
-
-                tvSearchMessage.text = ""
-            }
-
-            else -> {
-
-                currentResultUsername = ""
-
-                resultContainer.visibility =
-                    View.GONE
-
-                tvSearchMessage.text =
-                    "No user found"
-
+            } catch (e: Exception) {
+                tvSearchMessage.text = "Network error: ${e.message}"
+            } finally {
+                btnSearch.isEnabled = true
             }
         }
     }
 
     private fun sendFriendRequest() {
 
-        if (currentResultUsername.isEmpty()) {
-            return
-        }
+        if (currentResultUsername.isEmpty()) return
 
-        val database =
-            AppDatabase.getDatabase(this)
+        btnAddFriend.isEnabled = false
+        btnAddFriend.text = "Sending..."
 
-        lifecycleScope.launch(Dispatchers.IO) {
-
-            val account =
-                database.userAccountDao()
-                    .getAccount()
-
-            if (account == null) {
-
-                withContext(Dispatchers.Main) {
-
-                    Toast.makeText(
-                        this@FindPeopleActivity,
-                        "Account not found",
-                        Toast.LENGTH_SHORT
-                    ).show()
+        lifecycleScope.launch {
+            try {
+                val account = withContext(Dispatchers.IO) {
+                    AppDatabase.getDatabase(this@FindPeopleActivity)
+                        .userAccountDao()
+                        .getAccount()
                 }
 
-                return@launch
-            }
-
-            if (
-                account.username.equals(
-                    currentResultUsername,
-                    ignoreCase = true
-                )
-            ) {
-
-                withContext(Dispatchers.Main) {
-
-                    Toast.makeText(
-                        this@FindPeopleActivity,
-                        "You cannot add yourself",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                if (account == null) {
+                    Toast.makeText(this@FindPeopleActivity, "Account not found", Toast.LENGTH_SHORT).show()
+                    btnAddFriend.isEnabled = true
+                    btnAddFriend.text = "Add Friend"
+                    return@launch
                 }
 
-                return@launch
-            }
-
-            val existingRequest =
-                database.friendRequestDao()
-                    .findRequest(
-                        account.username,
-                        currentResultUsername
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.userApi.sendFriendRequest(
+                        FriendRequestSend(account.username, currentResultUsername)
                     )
-
-            if (existingRequest != null) {
-
-                withContext(Dispatchers.Main) {
-
-                    Toast.makeText(
-                        this@FindPeopleActivity,
-                        "Friend request already sent",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
 
-                return@launch
-            }
+                if (response.isSuccessful && response.body()?.success == true) {
+                    btnAddFriend.text = "Request Sent"
+                    Toast.makeText(this@FindPeopleActivity, "Friend request sent", Toast.LENGTH_SHORT).show()
+                } else {
+                    btnAddFriend.isEnabled = true
+                    btnAddFriend.text = "Add Friend"
+                    val msg = if (response.code() == 404) "User not found"
+                    else "Failed (${response.code()})"
+                    Toast.makeText(this@FindPeopleActivity, msg, Toast.LENGTH_SHORT).show()
+                }
 
-            val request = FriendRequest(
-
-                senderUsername =
-                    currentResultUsername,
-
-                receiverUsername =
-                    account.username,
-
-                status = "PENDING"
-            )
-
-            database.friendRequestDao()
-                .insertRequest(request)
-
-            withContext(Dispatchers.Main) {
-
-                btnAddFriend.isEnabled = false
-
-                btnAddFriend.text =
-                    "Request Sent"
-
-                Toast.makeText(
-                    this@FindPeopleActivity,
-                    "Development request created!",
-                    Toast.LENGTH_SHORT
-                ).show()
+            } catch (e: Exception) {
+                btnAddFriend.isEnabled = true
+                btnAddFriend.text = "Add Friend"
+                Toast.makeText(this@FindPeopleActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
