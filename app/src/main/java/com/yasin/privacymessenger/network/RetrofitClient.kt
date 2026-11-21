@@ -1,3 +1,4 @@
+
 package com.yasin.privacymessenger.network
 
 import okhttp3.OkHttpClient
@@ -7,8 +8,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    // ⚠️ Trailing slash is required. Replace with YOUR PC's LAN IP.
-    private const val BASE_URL = "http://192.168.0.104:3000/"
+    // Render production server URL. Trailing slash is required.
+    private const val BASE_URL = "https://privacymessenger.onrender.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
@@ -26,6 +27,12 @@ object RetrofitClient {
             .build()
     }
 
-    val api: MessageApi by lazy { retrofit.create(MessageApi::class.java) }
-    val userApi: UserApi by lazy { retrofit.create(UserApi::class.java) }
+    val api: MessageApi by lazy {
+        retrofit.create(MessageApi::class.java)
+    }
+
+    val userApi: UserApi by lazy {
+        retrofit.create(UserApi::class.java)
+    }
 }
+
