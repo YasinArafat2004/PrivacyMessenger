@@ -22,17 +22,13 @@ object CallManager {
 
     private const val TAG = "CallManager"
 
-    // 🔴 FIXED: server IP is now .104
-    private const val SERVER_URL = "http://192.168.0.104:3000"
+    private const val SERVER_URL = "https://privacymessenger.onrender.com"
 
-    // 🔴 FIXED: TURN placeholders blanked out.
-    //   Leaving them as fake hostnames made WebRTC spend ~30 s trying to
-    //   reach an unreachable TURN server, which stalled ICE gathering.
-    //   Fill these in ONLY when you have a real coturn server deployed.
-    //   Without a TURN server, calls on mobile data / strict NAT will fail.
-    private const val TURN_URL = ""
-    private const val TURN_USERNAME = ""
-    private const val TURN_PASSWORD = ""
+    // TURN server for NAT traversal (OpenRelay / Metered.ca public relay).
+    // Replace with your own production TURN server before shipping.
+    private const val TURN_URL = "turn:openrelay.metered.ca:80"
+    private const val TURN_USERNAME = "openrelayproject"
+    private const val TURN_PASSWORD = "openrelayproject"
 
     private const val CALL_TIMEOUT_MS = 45_000L
 
@@ -47,6 +43,11 @@ object CallManager {
 
     private var targetCallAddress: String? = null
     private var currentUsername: String = ""
+
+    // Remote ICE candidates that arrived before setRemoteDescription completed.
+    // libwebrtc silently drops addIceCandidate() calls in that window, so we
+    // buffer them here and drain once the remote description is ready.
+    private val pendingRemoteCandidates = mutableListOf<IceCandidate>()
 
     private var callTimeoutJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -75,7 +76,7 @@ object CallManager {
     val callState: StateFlow<String> = _callState
 
     // ==========================================
-    // MESSAGE EVENTS (unchanged)
+    // MESSAGE EVENTS
     // ==========================================
 
     private val _incomingMessages = MutableSharedFlow<JSONObject>(extraBufferCapacity = 64)
@@ -156,10 +157,24 @@ object CallManager {
                 .createIceServer()
         )
 
-        // TURN is only added when the user has actually configured one.
+        // TURN entries. Multiple transports so calls survive UDP blocking on
+        // mobile networks (TCP/443 looks like HTTPS traffic and usually gets
+        // through firewalls that drop UDP).
         if (TURN_URL.isNotBlank() && TURN_USERNAME.isNotBlank() && TURN_PASSWORD.isNotBlank()) {
             iceServers.add(
                 PeerConnection.IceServer.builder(TURN_URL)
+                    .setUsername(TURN_USERNAME)
+                    .setPassword(TURN_PASSWORD)
+                    .createIceServer()
+            )
+            iceServers.add(
+                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
+                    .setUsername(TURN_USERNAME)
+                    .setPassword(TURN_PASSWORD)
+                    .createIceServer()
+            )
+            iceServers.add(
+                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
                     .setUsername(TURN_USERNAME)
                     .setPassword(TURN_PASSWORD)
                     .createIceServer()
@@ -177,11 +192,14 @@ object CallManager {
                 sendIceCandidate(candidate)
             }
 
-            // 🔴 Remote audio track arrives here in Unified Plan.
+            // Remote audio track arrives here in Unified Plan.
             override fun onTrack(transceiver: RtpTransceiver?) {
                 val track = transceiver?.receiver?.track()
                 if (track is AudioTrack) {
                     track.setEnabled(true)
+                    // Ensure the audio session is in voice-call mode the moment
+                    // a remote track actually arrives.
+                    audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
                     Log.d(TAG, "Remote audio track enabled")
                 } else {
                     Log.w(TAG, "onTrack received non-audio or null track: $track")
@@ -229,6 +247,9 @@ object CallManager {
     }
 
     private fun closePeerConnection() {
+        // Drop any candidates that never made it into the peer connection.
+        pendingRemoteCandidates.clear()
+
         peerConnection?.let {
             it.close()
             it.dispose()
@@ -244,6 +265,18 @@ object CallManager {
             audioSource = null
         }
         targetCallAddress = null
+    }
+
+    // ==========================================
+    // REMOTE ICE CANDIDATE QUEUE
+    // ==========================================
+
+    private fun drainPendingCandidates() {
+        val pc = peerConnection ?: return
+        if (pendingRemoteCandidates.isEmpty()) return
+        Log.d(TAG, "Draining ${pendingRemoteCandidates.size} queued remote ICE candidates")
+        pendingRemoteCandidates.forEach { pc.addIceCandidate(it) }
+        pendingRemoteCandidates.clear()
     }
 
     // ==========================================
@@ -347,7 +380,7 @@ object CallManager {
                 // Prepare a fresh peer connection for this incoming call.
                 createPeerConnection()
 
-                // 🔴 Keep the mic muted until the user answers.
+                // Keep the mic muted until the user answers.
                 localAudioTrack?.setEnabled(false)
 
                 targetCallAddress = fromSocketId
@@ -359,7 +392,13 @@ object CallManager {
                     SessionDescription.Type.OFFER,
                     offer.getString("sdp")
                 )
-                peerConnection?.setRemoteDescription(SimpleSdpObserver(), remoteDesc)
+                // Drain any candidates that arrived in the tiny window between
+                // socket dispatch and setRemoteDescription completing.
+                peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        drainPendingCandidates()
+                    }
+                }, remoteDesc)
 
                 Log.d(TAG, "Incoming call from $callerUsername ($fromSocketId)")
             }
@@ -374,9 +413,13 @@ object CallManager {
                     SessionDescription.Type.ANSWER,
                     answer.getString("sdp")
                 )
-                peerConnection?.setRemoteDescription(SimpleSdpObserver(), remoteDesc)
+                peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        drainPendingCandidates()
+                    }
+                }, remoteDesc)
 
-                // 🔴 "CONNECTING", not "CONNECTED" – audio may take 1-3 s.
+                // "CONNECTING", not "CONNECTED" – audio may take 1-3 s.
                 _callState.value = "CONNECTING"
                 // Do NOT cancel the timeout yet – ICE still needs to complete.
             }
@@ -389,7 +432,15 @@ object CallManager {
                     candidateJson.optInt("sdpMLineIndex"),
                     candidateJson.optString("candidate")
                 )
-                peerConnection?.addIceCandidate(candidate)
+                val pc = peerConnection
+                if (pc?.remoteDescription == null) {
+                    // Remote description not set yet – queue. libwebrtc would
+                    // silently discard this otherwise.
+                    pendingRemoteCandidates.add(candidate)
+                    Log.d(TAG, "Queued remote ICE candidate (remote desc not ready)")
+                } else {
+                    pc.addIceCandidate(candidate)
+                }
             }
 
             socket?.on("call-ended") {
@@ -410,7 +461,7 @@ object CallManager {
     }
 
     // ==========================================
-    // MESSAGE SENDING (unchanged)
+    // MESSAGE SENDING
     // ==========================================
 
     fun sendMessage(
@@ -490,7 +541,7 @@ object CallManager {
         targetCallAddress = fromSocketId
         requestAudioFocus()
 
-        // 🔴 User accepted – mark as connecting and unmute the mic.
+        // User accepted – mark as connecting and unmute the mic.
         _callState.value = "CONNECTING"
 
         val constraints = MediaConstraints()
