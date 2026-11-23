@@ -715,7 +715,8 @@ io.on("connection", (socket) => {
     // WEBRTC CALL SIGNALING
     // ======================================
 
-    socket.on("call-user", ({ to, offer } = {}) => {
+    // 🔴 ADDED: Extract isVideo from the incoming payload.
+    socket.on("call-user", ({ to, offer, isVideo } = {}) => {
         if (!socket.username || !to || !offer) {
             socket.emit("call-failed", {
                 message: "Invalid call request"
@@ -757,11 +758,12 @@ io.on("connection", (socket) => {
                 from: socket.id,
                 fromSocketId: socket.id,
                 fromUsername: socket.username,
-                offer
+                offer,
+                isVideo // 🔴 ADDED: Pass the video flag to the receiver
             });
         }
 
-        console.log(`[call] ${socket.username} -> ${to}`);
+        console.log(`[call] ${socket.username} -> ${to} (Video: ${isVideo})`);
     });
 
     socket.on("answer-call", ({ to, answer } = {}) => {
@@ -811,6 +813,7 @@ io.on("connection", (socket) => {
             });
         }
 
+        // 🔴 FIXED: Fixed typo from 'g:onsole.log' to 'console.log'
         console.log(`[call-ended] ${socket.username} -> ${to || partner}`);
     });
 
