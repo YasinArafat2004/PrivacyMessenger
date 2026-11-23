@@ -24,11 +24,9 @@ object CallManager {
 
     private const val SERVER_URL = "https://privacymessenger.onrender.com"
 
-    // TURN server for NAT traversal (OpenRelay / Metered.ca public relay).
-    // Replace with your own production TURN server before shipping.
-    private const val TURN_URL = "turn:openrelay.metered.ca:80"
-    private const val TURN_USERNAME = "openrelayproject"
-    private const val TURN_PASSWORD = "openrelayproject"
+    // 🔴 METERED TURN CREDENTIALS
+    private const val TURN_USERNAME = "34f590628d56369328deedc7"
+    private const val TURN_PASSWORD = "bKksrbruXeyqFrL3"
 
     private const val CALL_TIMEOUT_MS = 45_000L
 
@@ -152,33 +150,27 @@ object CallManager {
         audioSource = factory.createAudioSource(audioConstraints)
         localAudioTrack = factory.createAudioTrack("audio0", audioSource)
 
+        // 🔴 METERED TURN SERVERS
         val iceServers = mutableListOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302")
+            PeerConnection.IceServer.builder("stun:stun.relay.metered.ca:80")
                 .createIceServer()
         )
 
-        // TURN entries. Multiple transports so calls survive UDP blocking on
-        // mobile networks (TCP/443 looks like HTTPS traffic and usually gets
-        // through firewalls that drop UDP).
-        if (TURN_URL.isNotBlank() && TURN_USERNAME.isNotBlank() && TURN_PASSWORD.isNotBlank()) {
-            iceServers.add(
-                PeerConnection.IceServer.builder(TURN_URL)
-                    .setUsername(TURN_USERNAME)
-                    .setPassword(TURN_PASSWORD)
-                    .createIceServer()
+        if (TURN_USERNAME.isNotBlank() && TURN_PASSWORD.isNotBlank()) {
+            val turnUrls = listOf(
+                "turn:global.relay.metered.ca:80",
+                "turn:global.relay.metered.ca:80?transport=tcp",
+                "turn:global.relay.metered.ca:443",
+                "turns:global.relay.metered.ca:443?transport=tcp"
             )
-            iceServers.add(
-                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
-                    .setUsername(TURN_USERNAME)
-                    .setPassword(TURN_PASSWORD)
-                    .createIceServer()
-            )
-            iceServers.add(
-                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
-                    .setUsername(TURN_USERNAME)
-                    .setPassword(TURN_PASSWORD)
-                    .createIceServer()
-            )
+            turnUrls.forEach { url ->
+                iceServers.add(
+                    PeerConnection.IceServer.builder(url)
+                        .setUsername(TURN_USERNAME)
+                        .setPassword(TURN_PASSWORD)
+                        .createIceServer()
+                )
+            }
         } else {
             Log.w(TAG, "No TURN server configured – calls across strict NAT may fail")
         }
